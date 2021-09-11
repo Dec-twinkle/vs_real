@@ -3,13 +3,32 @@
 # @author: 张新新
 # @email: 1262981714@qq.com
 from module.domain.auboRobot import auboRobot
+import os
+from utils import saveUtils
 import numpy as np
 import time
+import threading
 if __name__ == '__main__':
     robot = auboRobot(1025)
-    robot.setFrame(robot.getPosition())
-    robot.setSamplingtime(0.1)
-    robot.setVelocity(np.array([0,0,0,0.05,0.05,0.05]))
-    robot.run()
-    time.sleep(10)
-    robot.end()
+    while(True):
+        flag,position = robot.getPosition()
+        if os.path.exists("../config/robotPoseList.json"):
+            pose_list = saveUtils.json_load("../config/robotPoseList.json")
+        else:
+            pose_list = []
+        pose_list.append(position)
+        a = input()
+        if a=="0":
+            break
+    robot.realease()
+    saveUtils.json_save(pose_list,"../config/robotPoseList.json")
+    # robot.setFrame(position)
+    # robot.setSamplingtime(0.5)
+    # robot.setVelocity(np.array([0,0,0.02,0.0,0,0.0]))
+    # thread_pool = []
+    # thread_pool.append(robot)
+    # for th in thread_pool:
+    #     th.start()
+    # time.sleep(10)
+    # robot.realease()
+    # time.sleep(20)

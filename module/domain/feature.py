@@ -6,7 +6,7 @@
 import numpy as np
 # from Module.module_base import module_base
 import cv2
-class FeaturePoint(obj):
+class FeaturePoint():
     def __init__(self,x=None,y=None,Z=None):
         self.x= x
         self.y = y

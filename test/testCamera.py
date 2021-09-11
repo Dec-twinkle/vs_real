@@ -8,6 +8,7 @@ import time
 if __name__ == '__main__':
     camera = kinectDK(1026,"../config/intrinsic.yml")
     camera.setSaveDir("../image")
+    camera.samplingTime=0.5
     camera.show()
     time.sleep(10)
     camera.realease()

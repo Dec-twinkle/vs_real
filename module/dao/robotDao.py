@@ -8,6 +8,7 @@ import numpy as np
 import time
 import transforms3d as t3d
 import _thread
+import threading
 
 class robotDao(ABC):
 
@@ -15,7 +16,7 @@ class robotDao(ABC):
         self.samplingTime = 0
         self.position = None
         self.velocity = np.array([0,0,0,0,0,0])
-        self.end = True
+        self.end = False
         self.frame = np.eye(4)
 
     def setSamplingtime(self, samplingTime):
@@ -68,7 +69,7 @@ class robotDao(ABC):
 
     def run(self):
         def robot_run():
-            while(self.end):
+            while(not self.end):
                 positionInframe = np.dot(np.linalg.inv(self.frame),self.position)
                 eulerInframe = t3d.euler.mat2euler(positionInframe[:3,:3])
                 nextPositionInframe = np.eye(4)
@@ -77,14 +78,19 @@ class robotDao(ABC):
                                                                  eulerInframe[2]-self.velocity[5]*self.samplingTime)
                 nextPositionInframe[:3,3] = positionInframe[:3,3]-self.velocity[:3] * self.samplingTime
                 self.position = np.dot(self.frame,nextPositionInframe)
-                # print("robotpose:",self.getPosition())
+                self.movenum = self.movenum+1
+                self.setPosition(self.position)
                 time.sleep(self.samplingTime)
         self.end = True
+        self.movenum=0
         _thread.start_new_thread(robot_run, ())
 
     @abstractmethod
-    def end(self):
+    def realease(self):
         '''
         停止运行
         :return:
         '''
+
+    def endrun(self):
+        self.end = True

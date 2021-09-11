@@ -9,6 +9,7 @@ from PIL import Image
 import numpy as np
 import sys
 import os
+import time
 ros_cv2_path = '/opt/ros/kinetic/lib/python2.7/dist-packages'
 if ros_cv2_path in sys.path:
     sys.path.remove(ros_cv2_path)
@@ -40,10 +41,11 @@ class kinectDK(cameraDao.cameraDao):
             flag = self.socket.recv(1024).decode()
             if flag == 'True':
                 self.rgbImage = cv2.imread(self.temp_color_file_name)
-                os.remove(self.temp_color_file_name)
+                #os.remove(self.temp_color_file_name)
                 depth_image = Image.open(self.temp_depth_file_name)
                 self.depth_image = np.array(depth_image)
-                os.remove(self.temp_depth_file_name)
+                return True
+                #os.remove(self.temp_depth_file_name)
                 # img = Image.fromarray(depth_image)
                 # img.save("../temp/test_save_depth.png")
                 # return True, image, depth_image
@@ -52,6 +54,7 @@ class kinectDK(cameraDao.cameraDao):
             self.socket.close()
             self.end = True
             self.flag = False
+            return False
             # return False,None,None
 
     def setSaveDir(self,dir):
@@ -60,13 +63,20 @@ class kinectDK(cameraDao.cameraDao):
     def show(self):
         def cv2show():
             while(not self.end):
-                self.get_rgb_depth_image()
-                cv2.imshow("kinect capture", cv2.resize(self.rgbImage,(640,480)))
-                cv2.waitKey(self.samplingTime*1000)
-                if not self.savedir is None:
-                    savepath = os.path.join(self.savedir,"{}.png".format(str(self.frameNum).zfill(4)))
-                    if not os.path.exists(savepath):
-                        cv2.imwrite(savepath,self.rgbImage)
+
+                # flag = self.get_rgb_depth_image()
+                # if not flag:
+                #     print("fail to capture")
+                #     exit(-1)
+                if self.rgbImage is None:
+                    time.sleep(self.samplingTime)
+                else:
+                    cv2.imshow("kinect capture", cv2.resize(self.rgbImage,(192*4,108*4)))
+                    cv2.waitKey(int(self.samplingTime*1000))
+                    if not self.savedir is None:
+                        savepath = os.path.join(self.savedir,"{}.png".format(str(self.frameNum).zfill(4)))
+                        if not os.path.exists(savepath):
+                            cv2.imwrite(savepath,self.rgbImage)
 
         _thread.start_new_thread(cv2show, ())
 

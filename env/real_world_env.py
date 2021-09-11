@@ -17,15 +17,15 @@ import random
 import time
 class env(object):
     def __init__(self):
-        self.camera  = kinectDK(1026,"../config/intrinsic.yml")
-        self.robot = auboRobot(1025)
+        self.camera = kinectDK(1026,"../config/intrinsic.yml")
         self.board = aprilBoard("../config/apriltag_real.yml", "../config/tagId.csv")
-
+        self.camera.samplingTime = 0.5
         self.camera.show()
-        self.robot.setSamplingtime(0.1)
-        self.loadRobotPose("../config/robotPoseList.csv")
+        self.loadRobotPose("../config/robotPoseList.json")
         self.servoTask = Task()
         self.servoTask.setHandeye(saveUtils.json_load("../config/handeye.json"))
+        self.robot = auboRobot(1025)
+        self.robot.setSamplingtime(0.5)
 
 
 
@@ -33,16 +33,20 @@ class env(object):
         self.robotPoses = saveUtils.json_load(path)
 
     def reset(self):
-        destRGBimage =  cv2.imread("../config/destRGBImg.png")
+        destRGBimage =  cv2.imread("../config/destRGBImg.bmp")
         destDepthimage =  Image.open("../config/destDepthImg.png")
-        imgpoint_temp,objpoint_temp = self.board.getObjImgPointList(destRGBimage)
+        flag,imgpoint_temp,objpoint_temp = self.board.getObjImgPointList(destRGBimage)
+        if not flag:
+            exit(-1)
         depth_points, rejectids = depthUtils.get_depth2(imgpoint_temp, destDepthimage)
         self.destImgpoint = np.delete(imgpoint_temp, rejectids, axis=0)
         self.destDepthpoint = np.delete(depth_points, rejectids, axis=0)
         self.destobjpoint = np.delete(objpoint_temp, rejectids, axis=0)
-        self.robot = auboRobot(1025)
+        if self.robot.end:
+            self.robot.end = False
         self.robot.setVelocity(np.array([0, 0, 0, 0, 0, 0]))
         self.robot.setPosition(random.choice(self.robotPoses))
+        time.sleep(1)
         self.robot.setFrame(self.robot.getPosition())
         self.robot.run()
 
@@ -58,7 +62,10 @@ class env(object):
 
 
     def updateFeature(self,RGBimage,depthImage):
-        imgpoint_temp, objpoint_temp = self.board.getObjImgPointList(RGBimage)
+        flag,imgpoint_temp, objpoint_temp = self.board.getObjImgPointList(RGBimage)
+        if not flag:
+            print("cannot find point")
+            exit(-1)
         depth_points, rejectids = depthUtils.get_depth2(imgpoint_temp, depthImage)
         sourceImgpoint = np.delete(imgpoint_temp, rejectids, axis=0)
         sourceDepthpoint = np.delete(depth_points, rejectids, axis=0)
@@ -79,8 +86,10 @@ class env(object):
         self.robot.setFrame(self.robot.getPosition())
         self.servoTask.setLambda(action)
         self.updateFeature(self.camera.rgbImage,self.camera.depthImage)
+        self.updateError()
         vc = self.servoTask.getCameraVelocity()
         ve = self.servoTask.transformCameraToRobotVelocity(vc)
+        print(ve)
         self.robot.setVelocity(ve)
         time.sleep(self.robot.samplingTime)
 
@@ -155,6 +164,10 @@ class env(object):
             else:
                 score+=-100*pixel_error/np.linalg.norm(np.array([self.camera.imgsize[0],self.camera.imgsize[1]]))
         return score/n
+
+    def realease(self):
+        self.camera.realease()
+        self.robot.realease()
 
 
 
