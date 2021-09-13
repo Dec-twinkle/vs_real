@@ -34,28 +34,36 @@ class kinectDK(cameraDao.cameraDao):
         self.savedir = None
         self.flag = True
         self.end = False
+        self.rgbImage = None
 
     def get_rgb_depth_image(self):
-        try:
-            self.socket.send("capture".encode())
-            flag = self.socket.recv(1024).decode()
-            if flag == 'True':
-                self.rgbImage = cv2.imread(self.temp_color_file_name)
-                #os.remove(self.temp_color_file_name)
-                depth_image = Image.open(self.temp_depth_file_name)
-                self.depth_image = np.array(depth_image)
-                return True
-                #os.remove(self.temp_depth_file_name)
-                # img = Image.fromarray(depth_image)
-                # img.save("../temp/test_save_depth.png")
-                # return True, image, depth_image
-        except Exception:
-            print("fail to connect")
-            self.socket.close()
-            self.end = True
-            self.flag = False
-            return False
-            # return False,None,None
+        while(True):
+            try:
+                self.socket.send("capture".encode())
+                flag = self.socket.recv(1024).decode()
+                if flag == 'True':
+                    self.rgbImage = cv2.imread(self.temp_color_file_name)
+                    #os.remove(self.temp_color_file_name)
+                    depth_image = Image.open(self.temp_depth_file_name)
+                    self.depth_image = np.array(depth_image)
+                    return True
+                    #os.remove(self.temp_depth_file_name)
+                    # img = Image.fromarray(depth_image)
+                    # img.save("../temp/test_save_depth.png")
+                    # return True, image, depth_image
+            except Exception:
+                print("fail to connect")
+                self.socket.close()
+
+                while(True):
+                    try:
+                        a = input("please restart camera and input")
+                        self.socket = socket()
+                        self.socket.connect(("127.0.0.1", self.port))
+                        break
+                    except Exception:
+                        continue
+                # return False,None,None
 
     def setSaveDir(self,dir):
         self.savedir = dir
@@ -72,12 +80,12 @@ class kinectDK(cameraDao.cameraDao):
                     time.sleep(self.samplingTime)
                 else:
                     cv2.imshow("kinect capture", cv2.resize(self.rgbImage,(192*4,108*4)))
-                    cv2.waitKey(int(self.samplingTime*1000))
+                    cv2.waitKey(200)
                     if not self.savedir is None:
                         savepath = os.path.join(self.savedir,"{}.png".format(str(self.frameNum).zfill(4)))
                         if not os.path.exists(savepath):
                             cv2.imwrite(savepath,self.rgbImage)
-
+        self.end = False
         _thread.start_new_thread(cv2show, ())
 
     def realease(self):

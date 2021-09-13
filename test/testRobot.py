@@ -10,12 +10,12 @@ import time
 import threading
 if __name__ == '__main__':
     robot = auboRobot(1025)
+    if os.path.exists("../config/robotPoseList.json"):
+        pose_list = saveUtils.json_load("../config/robotPoseList.json")
+    else:
+        pose_list = []
     while(True):
         flag,position = robot.getPosition()
-        if os.path.exists("../config/robotPoseList.json"):
-            pose_list = saveUtils.json_load("../config/robotPoseList.json")
-        else:
-            pose_list = []
         pose_list.append(position)
         a = input()
         if a=="0":

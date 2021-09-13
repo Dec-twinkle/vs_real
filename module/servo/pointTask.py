@@ -147,7 +147,7 @@ class Task():
     def getCameraVelocity(self):
         self.updateFeatureError()
         self.updateInteraction()
-        return -self.gain * np.dot(np.linalg.pinv(self.Le), self.error).flatten()
+        return self.gain * np.dot(np.linalg.pinv(self.Le), self.error).flatten()
 
     def transformCameraToRobotVelocity(self, cameraVelocity):
         matrix = np.eye(4)

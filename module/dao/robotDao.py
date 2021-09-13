@@ -69,6 +69,7 @@ class robotDao(ABC):
 
     def run(self):
         def robot_run():
+            print("robot is running!!")
             while(not self.end):
                 positionInframe = np.dot(np.linalg.inv(self.frame),self.position)
                 eulerInframe = t3d.euler.mat2euler(positionInframe[:3,:3])
@@ -81,7 +82,8 @@ class robotDao(ABC):
                 self.movenum = self.movenum+1
                 self.setPosition(self.position)
                 time.sleep(self.samplingTime)
-        self.end = True
+            print("robot stop running!!")
+        self.end = False
         self.movenum=0
         _thread.start_new_thread(robot_run, ())
 

@@ -20,6 +20,7 @@ class env(object):
         self.camera = kinectDK(1026,"../config/intrinsic.yml")
         self.board = aprilBoard("../config/apriltag_real.yml", "../config/tagId.csv")
         self.camera.samplingTime = 0.5
+        self.camera.setSaveDir("../image")
         self.camera.show()
         self.loadRobotPose("../config/robotPoseList.json")
         self.servoTask = Task()
@@ -35,7 +36,8 @@ class env(object):
     def reset(self):
         destRGBimage =  cv2.imread("../config/destRGBImg.bmp")
         destDepthimage =  Image.open("../config/destDepthImg.png")
-        flag,imgpoint_temp,objpoint_temp = self.board.getObjImgPointList(destRGBimage)
+        destDepthimage = np.array(destDepthimage)
+        flag,objpoint_temp,imgpoint_temp = self.board.getObjImgPointList(destRGBimage)
         if not flag:
             exit(-1)
         depth_points, rejectids = depthUtils.get_depth2(imgpoint_temp, destDepthimage)
@@ -45,10 +47,13 @@ class env(object):
         if self.robot.end:
             self.robot.end = False
         self.robot.setVelocity(np.array([0, 0, 0, 0, 0, 0]))
-        self.robot.setPosition(random.choice(self.robotPoses))
+        self.robot.setPosition(self.robotPoses[0])
         time.sleep(1)
-        self.robot.setFrame(self.robot.getPosition())
-        self.robot.run()
+        flag, Pose = self.robot.getPosition()
+        if not flag:
+            exit(-1)
+        self.robot.setFrame(Pose)
+        #self.robot.run()
 
     def point2feature(self,imgpoint,depthpoint,intrinsic):
         imgpoint = imgpoint.reshape([-1,2])
@@ -62,10 +67,10 @@ class env(object):
 
 
     def updateFeature(self,RGBimage,depthImage):
-        flag,imgpoint_temp, objpoint_temp = self.board.getObjImgPointList(RGBimage)
+        flag,objpoint_temp,imgpoint_temp = self.board.getObjImgPointList(RGBimage)
         if not flag:
             print("cannot find point")
-            exit(-1)
+            return False
         depth_points, rejectids = depthUtils.get_depth2(imgpoint_temp, depthImage)
         sourceImgpoint = np.delete(imgpoint_temp, rejectids, axis=0)
         sourceDepthpoint = np.delete(depth_points, rejectids, axis=0)
@@ -81,17 +86,25 @@ class env(object):
                    cFeatures.extend(self.point2feature(sourceImgpoint[i,:],sourceDepthpoint[i,:],self.camera.intrinsic))
         self.servoTask.setCFeature(cFeatures)
         self.servoTask.setDFeature(dFeatures)
+        return True
 
     def get_next_state(self,action):
-        self.robot.setFrame(self.robot.getPosition())
+        flag,Pose = self.robot.getPosition()
+        if not flag:
+            exit(-1)
+        self.robot.setFrame(Pose)
         self.servoTask.setLambda(action)
-        self.updateFeature(self.camera.rgbImage,self.camera.depthImage)
-        self.updateError()
+        flag = self.updateFeature(self.camera.rgbImage,self.camera.depth_image)
+        if not flag:
+            return flag
+        self.servoTask.updateFeatureError()
         vc = self.servoTask.getCameraVelocity()
         ve = self.servoTask.transformCameraToRobotVelocity(vc)
-        print(ve)
         self.robot.setVelocity(ve)
-        time.sleep(self.robot.samplingTime)
+        # self.camera.get_rgb_depth_image()
+
+        #time.sleep(self.robot.samplingTime)
+        return self.robot.run()
 
 
     def getState(self,statelist):
